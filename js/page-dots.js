@@ -79,17 +79,17 @@ PageDots.prototype.setDots = function() {
 PageDots.prototype.addDots = function( count ) {
   var fragment = document.createDocumentFragment();
   var newDots = [];
-  var totalCount = count + 1;
+  var length = this.dots.length;
+  var max = length + count;
 
-  while ( count ) {
+  for ( var i = length; i < max; i++ ) {
     var dot = document.createElement('li');
     dot.className = 'dot';
+    dot.setAttribute( 'aria-label', 'Page dot ' + ( i + 1 ) );
     fragment.appendChild( dot );
     newDots.push( dot );
-
-    dot.setAttribute('aria-label', 'cell n' + (totalCount - count));
-    count--;
   }
+
   this.holder.appendChild( fragment );
   this.dots = this.dots.concat( newDots );
 };
@@ -115,7 +115,7 @@ PageDots.prototype.updateSelected = function() {
   }
   this.selectedDot = this.dots[ this.parent.selectedIndex ];
   this.selectedDot.className = 'dot is-selected';
-  this.selectedDot.setAttribute('aria-current', this.parent.selectedIndex + 1);
+  this.selectedDot.setAttribute( 'aria-current', 'step' );
 };
 
 PageDots.prototype.onTap = function( event ) {
