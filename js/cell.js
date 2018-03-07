@@ -71,8 +71,12 @@ proto.updateTarget = proto.setDefaultTarget = function() {
 
 proto.renderPosition = function( x ) {
   // render position of cell with in slider
-  // var side = this.parent.originSide;
-  this.element.style.top = this.parent.getPositionValue( x );
+  if(this.options.verticalCells) {
+    this.element.style.top = this.parent.getPositionValue( x );
+  } else {
+    var side = this.parent.originSide;
+    this.element.style[ side ] = this.parent.getPositionValue( x );
+  }
 };
 
 /**

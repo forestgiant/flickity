@@ -96,6 +96,7 @@ Flickity.defaults = {
   accessibility: true,
   // adaptiveHeight: false,
   cellAlign: 'center',
+  // verticalCells: false,
   // cellSelector: undefined,
   // contain: false,
   freeScrollFriction: 0.075, // friction when free-scrolling

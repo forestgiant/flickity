@@ -102,8 +102,13 @@ proto.positionSlider = function() {
   var value = this.getPositionValue( x );
   // use 3D tranforms for hardware acceleration on iOS
   // but use 2D when settled, for better font-rendering
-  this.slider.style[ transformProperty ] = this.isAnimating ?
-    'translate3d(0,' + value + ',0)' : 'translateY(' + value + ')';
+  if(this.options.verticalCells) {
+    this.slider.style[ transformProperty ] = this.isAnimating ?
+      'translate3d(0,' + value + ',0)' : 'translateY(' + value + ')';
+  } else {
+    this.slider.style[ transformProperty ] = this.isAnimating ?
+      'translate3d(' + value + ',0,0)' : 'translateX(' + value + ')';
+  }
 
   // scroll event
   var firstSlide = this.slides[0];
