@@ -71,7 +71,7 @@ proto.updateTarget = proto.setDefaultTarget = function() {
 
 proto.renderPosition = function( x ) {
   // render position of cell with in slider
-  if(this.options.verticalCells) {
+  if(this.parent.options.verticalCells) {
     this.element.style.top = this.parent.getPositionValue( x );
   } else {
     var side = this.parent.originSide;
