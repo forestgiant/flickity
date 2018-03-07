@@ -103,7 +103,7 @@ proto.positionSlider = function() {
   // use 3D tranforms for hardware acceleration on iOS
   // but use 2D when settled, for better font-rendering
   this.slider.style[ transformProperty ] = this.isAnimating ?
-    'translate3d(' + value + ',0,0)' : 'translateX(' + value + ')';
+    'translate3d(0,' + value + ',0)' : 'translateY(' + value + ')';
 
   // scroll event
   var firstSlide = this.slides[0];
