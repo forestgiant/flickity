@@ -1,4 +1,4 @@
-# Flickity
+# Flickity (vertical slider mode)
 
 _Touch, responsive, flickable carousels_
 
