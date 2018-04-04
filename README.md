@@ -1,6 +1,12 @@
-# Flickity (vertical slider mode)
+# Flickity (Enhanced Vertical Slider Mode)
 
-_Touch, responsive, flickable carousels_
+An updated fork of [tristantbg's Flickity fork](https://github.com/tristantbg/flickity). Allows vertical carousels, and fixes some
+problems in the forked implementation. Among the issues addressed are:
+
++ Vertical carousel cells now base their positions on cell height, rather than width, 
+  which eliminates gaps between cells.
++ Vertical carousel cells are now scrolled intuitively, by dragging up/down, rather than
+  left/right.
 
 See [flickity.metafizzy.co](http://flickity.metafizzy.co) for complete docs and demos.
 
