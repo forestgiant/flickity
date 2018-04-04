@@ -84,7 +84,11 @@ proto.renderPosition = function( x ) {
 **/
 proto.wrapShift = function( shift ) {
   this.shift = shift;
-  this.renderPosition( this.x + this.parent.slideableWidth * shift );
+  if (this.parent.options.verticalCells) {
+      this.renderPosition( this.y + this.parent.slideableHeight * shift);
+  } else {
+    this.renderPosition( this.x + this.parent.slideableWidth * shift );
+  }
 };
 
 proto.remove = function() {

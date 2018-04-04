@@ -266,21 +266,29 @@ proto._positionCells = function( index ) {
   // also measure maxCellHeight
   // start 0 if positioning all cells
   this.maxCellHeight = index ? this.maxCellHeight || 0 : 0;
-  var cellX = 0;
+  var cellX = 0,
+      cellY = 0;
   // get cellX
   if ( index > 0 ) {
     var startCell = this.cells[ index - 1 ];
     cellX = startCell.x + startCell.size.outerWidth;
+    cellY = startCell.y + startCell.size.outerHeight;
   }
   var len = this.cells.length;
   for ( var i=index; i < len; i++ ) {
     var cell = this.cells[i];
-    cell.setPosition( cellX );
+    if (this.options.verticalCells) {
+        cell.setPosition( cellY );
+    } else {
+        cell.setPosition( cellX );
+    }
     cellX += cell.size.outerWidth;
+    cellY += cell.size.outerHeight;
     this.maxCellHeight = Math.max( cell.size.outerHeight, this.maxCellHeight );
   }
   // keep track of cellX for wrap-around
   this.slideableWidth = cellX;
+  this.slideableHeight = cellY;
   // slides
   this.updateSlides();
   // contain slides target
