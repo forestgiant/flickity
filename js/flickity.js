@@ -130,6 +130,7 @@ proto._create = function() {
   // initial physics properties
   this.x = 0;
   this.y = 0;
+  this._touchActionValue = this.options.verticalCells ? 'pan-x' : 'pan-y';
   this.velocity = 0;
   this.originSide = this.options.rightToLeft ? 'right' : 'left';
   // create viewport & slider
