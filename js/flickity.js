@@ -129,6 +129,7 @@ proto._create = function() {
   this.restingFrames = 0;
   // initial physics properties
   this.x = 0;
+  this.y = 0;
   this.velocity = 0;
   this.originSide = this.options.rightToLeft ? 'right' : 'left';
   // create viewport & slider

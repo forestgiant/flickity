@@ -36,8 +36,8 @@
 // ----- defaults ----- //
 
 utils.extend( Flickity.defaults, {
-  draggable: true,
-  dragThreshold: 3,
+  draggable:        true,
+  dragThreshold:    3,
 });
 
 // ----- create ----- //
@@ -73,6 +73,7 @@ proto.bindDrag = function() {
     return;
   }
   this.element.classList.add('is-draggable');
+
   this.handles = [ this.viewport ];
   this.bindHandles();
   this.isDragBound = true;
@@ -101,21 +102,22 @@ proto._childUIPointerDownDrag = function( event ) {
 // nodes that have text fields
 var cursorNodes = {
   TEXTAREA: true,
-  INPUT: true,
-  OPTION: true,
+  INPUT:    true,
+  OPTION:   true,
 };
 
 // input types that do not have text fields
 var clickTypes = {
-  radio: true,
+  radio:    true,
   checkbox: true,
-  button: true,
-  submit: true,
-  image: true,
-  file: true,
+  button:   true,
+  submit:   true,
+  image:    true,
+  file:     true,
 };
 
 proto.pointerDown = function( event, pointer ) {
+
   // dismiss inputs with text fields. #403, #404
   var isCursorInput = cursorNodes[ event.target.nodeName ] &&
     !clickTypes[ event.target.type ];
@@ -136,8 +138,11 @@ proto.pointerDown = function( event, pointer ) {
     focused.blur();
   }
   this.pointerDownFocus( event );
+
   // stop if it was moving
   this.dragX = this.x;
+  this.dragY = this.y;
+
   this.viewport.classList.add('is-pointer-down');
   // bind move and end events
   this._bindPostStartEvents( event );
@@ -148,18 +153,34 @@ proto.pointerDown = function( event, pointer ) {
   this.dispatchEvent( 'pointerDown', event, [ pointer ] );
 };
 
+//------------------------------------------------------------------------------------
+// pointerDownFocus()
+//------------------------------------------------------------------------------------
 proto.pointerDownFocus = function( event ) {
-  // focus element, if not touch, and its not an input or select
-  var canPointerDown = getCanPointerDown( event );
-  if ( !this.options.accessibility || canPointerDown ) {
-    return;
-  }
-  var prevScrollY = window.pageYOffset;
-  this.element.focus();
-  // hack to fix scroll jump after focus, #76
-  if ( window.pageYOffset != prevScrollY ) {
-    window.scrollTo( window.pageXOffset, prevScrollY );
-  }
+    // focus element, if not touch, and its not an input or select
+    var canPointerDown = getCanPointerDown( event );
+
+    if ( !this.options.accessibility || canPointerDown ) {
+        return;
+    }
+
+    if (this.options.verticalScroll) {
+        var prevScrollX = window.pageXOffset;
+        this.element.focus();
+        
+        // hack to fix scroll jump after focus, #76
+        if ( window.pageXOffset != prevScrollX ) {
+            window.scrollTo( window.prevScrollX, window.pageYOffset );
+        }
+    } else {
+      var prevScrollY = window.pageYOffset;
+      this.element.focus();
+        
+      // hack to fix scroll jump after focus, #76
+      if ( window.pageYOffset != prevScrollY ) {
+        window.scrollTo( window.pageXOffset, prevScrollY );
+      }
+    }
 };
 
 var focusNodes = {
@@ -180,103 +201,190 @@ proto.canPreventDefaultOnPointerDown = function( event ) {
   return !canPointerDown;
 };
 
-// ----- move ----- //
-
+//------------------------------------------------------------------------------------
+// hasDragStarted()
+//------------------------------------------------------------------------------------
 proto.hasDragStarted = function( moveVector ) {
-  return Math.abs( moveVector.x ) > this.options.dragThreshold;
+    if (this.options.verticalCells) {
+        return Math.abs( moveVector.y ) > this.options.dragThreshold;
+    } else {
+        return Math.abs( moveVector.x ) > this.options.dragThreshold;
+    }
 };
 
-// ----- up ----- //
-
+//------------------------------------------------------------------------------------
+// pointerUp()
+//------------------------------------------------------------------------------------
 proto.pointerUp = function( event, pointer ) {
   delete this.isTouchScrolling;
+
   this.viewport.classList.remove('is-pointer-down');
   this.dispatchEvent( 'pointerUp', event, [ pointer ] );
   this._dragPointerUp( event, pointer );
 };
 
+//------------------------------------------------------------------------------------
+// pointerDone()
+//------------------------------------------------------------------------------------
 proto.pointerDone = function() {
   window.removeEventListener( 'scroll', this );
   delete this.pointerDownScroll;
 };
 
-// -------------------------- dragging -------------------------- //
-
+//------------------------------------------------------------------------------------
+// dragStart()
+//------------------------------------------------------------------------------------
 proto.dragStart = function( event, pointer ) {
-  this.dragStartPosition = this.x;
+  if (this.options.verticalCells) {
+    this.dragStartPosition = this.y
+  } else {
+    this.dragStartPosition = this.x;
+  }
+
   this.startAnimation();
   window.removeEventListener( 'scroll', this );
   this.dispatchEvent( 'dragStart', event, [ pointer ] );
 };
 
-proto.pointerMove = function( event, pointer ) {
-  var moveVector = this._dragPointerMove( event, pointer );
+//------------------------------------------------------------------------------------
+// pointerMove()
+//------------------------------------------------------------------------------------
+proto.pointerMove   = function( event, pointer ) {
+  var moveVector    = this._dragPointerMove( event, pointer );
+
   this.dispatchEvent( 'pointerMove', event, [ pointer, moveVector ] );
   this._dragMove( event, pointer, moveVector );
 };
 
+
+//------------------------------------------------------------------------------------
+// dragMove()
+//------------------------------------------------------------------------------------
 proto.dragMove = function( event, pointer, moveVector ) {
   event.preventDefault();
 
-  this.previousDragX = this.dragX;
-  // reverse if right-to-left
-  var direction = this.options.rightToLeft ? -1 : 1;
-  var dragX = this.dragStartPosition + moveVector.x * direction;
+  var dragX, 
+      dragY, 
+      originBound, 
+      endBound,
+      direction;
 
-  if ( !this.options.wrapAround && this.slides.length ) {
-    // slow drag
-    var originBound = Math.max( -this.slides[0].target, this.dragStartPosition );
-    dragX = dragX > originBound ? ( dragX + originBound ) * 0.5 : dragX;
-    var endBound = Math.min( -this.getLastSlide().target, this.dragStartPosition );
-    dragX = dragX < endBound ? ( dragX + endBound ) * 0.5 : dragX;
+  if (this.options.verticalCells) {
+    this.previousDragY  = this.dragY;
+    direction           = 1;
+    dragY               = this.dragStartPosition + moveVector.y;
+    
+    if ( !this.options.wrapAround && this.slides.length ) {
+        originBound     = Math.max( -this.slides[0].target, this.dragStartPosition );
+        dragY           = dragY > originBound ? ( dragY + originBound ) * 0.5 : dragY;
+    }
+
+    endBound            = Math.min( -this.getLastSlide().target, this.dragStartPosition );
+    dragY               = dragY < endBound ? ( dragY + endBound) * 0.5 : dragY;
+    this.dragY          = dragY;
+
+  } else {
+    this.previousDragX  = this.dragX;
+    direction           = this.options.rightToLeft ? -1 : 1;
+    dragX               = this.dragStartPosition + moveVector.x * direction;
+
+    if ( !this.options.wrapAround && this.slides.length ) {
+        originBound     = Math.max( -this.slides[0].target, this.dragStartPosition );
+        dragX           = dragX > originBound ? ( dragX + originBound ) * 0.5 : dragX;
+    }
+
+    endBound            = Math.min( -this.getLastSlide().target, this.dragStartPosition );
+    dragX               = dragX < endBound ? ( dragX + endBound ) * 0.5 : dragX;
+    this.dragX          = dragX;
   }
 
-  this.dragX = dragX;
+  this.dragMoveTime     = new Date();
 
-  this.dragMoveTime = new Date();
   this.dispatchEvent( 'dragMove', event, [ pointer, moveVector ] );
 };
 
+
+//------------------------------------------------------------------------------------
+// dragEnd()
+//------------------------------------------------------------------------------------
 proto.dragEnd = function( event, pointer ) {
-  if ( this.options.freeScroll ) {
-    this.isFreeScrolling = true;
-  }
-  // set selectedIndex based on where flick will end up
-  var index = this.dragEndRestingSelect();
+  
+    if ( this.options.freeScroll ) {
+        this.isFreeScrolling        = true;
+    }
 
-  if ( this.options.freeScroll && !this.options.wrapAround ) {
-    // if free-scroll & not wrap around
-    // do not free-scroll if going outside of bounding slides
-    // so bounding slides can attract slider, and keep it in bounds
-    var restingX = this.getRestingPosition();
-    this.isFreeScrolling = -restingX > this.slides[0].target &&
-      -restingX < this.getLastSlide().target;
-  } else if ( !this.options.freeScroll && index == this.selectedIndex ) {
-    // boost selection if selected index has not changed
-    index += this.dragEndBoostSelect();
-  }
-  delete this.previousDragX;
-  // apply selection
-  // TODO refactor this, selecting here feels weird
-  // HACK, set flag so dragging stays in correct direction
-  this.isDragSelect = this.options.wrapAround;
-  this.select( index );
-  delete this.isDragSelect;
-  this.dispatchEvent( 'dragEnd', event, [ pointer ] );
+    // Set selectedIndex based on where flick will end up
+    var index                       = this.dragEndRestingSelect();
+
+    if ( this.options.freeScroll && !this.options.wrapAround ) {
+
+    /*  If free-scroll & not wrap around, do not free-scroll if 
+        going outside of bounding slides so bounding slides can 
+        attract slider, and keep it in bounds */
+
+        if (this.options.verticalCells) {
+            var restingY            = this.getRestingPosition();
+            this.isFreeScrolling    = -restingY > this.slides[0].target &&
+                -restingY < this.getLastSlide().target;
+        } else {
+            var restingX            = this.getRestingPosition();
+            this.isFreeScrolling    = -restingX > this.slides[0].target &&
+                -restingX < this.getLastSlide().target;
+        }
+    } else if ( !this.options.freeScroll && index == this.selectedIndex ) {
+        // Boost selection if selected index has not changed
+        index += this.dragEndBoostSelect();
+    }
+    
+    if (this.options.verticalCells) {
+        delete this.previousDragY;
+    } else {
+        delete this.previousDragX;
+    }
+
+    this.isDragSelect               = this.options.wrapAround;
+    this.select( index );
+    delete this.isDragSelect;
+    this.dispatchEvent( 'dragEnd', event, [ pointer ] );
 };
 
+//------------------------------------------------------------------------------------
+// dragEnd()
+//------------------------------------------------------------------------------------
 proto.dragEndRestingSelect = function() {
-  var restingX = this.getRestingPosition();
-  // how far away from selected slide
-  var distance = Math.abs( this.getSlideDistance( -restingX, this.selectedIndex ) );
-  // get closet resting going up and going down
-  var positiveResting = this._getClosestResting( restingX, distance, 1 );
-  var negativeResting = this._getClosestResting( restingX, distance, -1 );
-  // use closer resting for wrap-around
-  var index = positiveResting.distance < negativeResting.distance ?
+    var index,
+        restingX,
+        restingY,
+        distance,
+        positiveResting,
+        negativeResting;
+
+    if (this.options.verticalCells) {
+        restingY        = this.getRestingPosition();
+        distance        = Math.abs( this.getSlideDistance( -restingY, this.selectedIndex ) );
+
+        // Get closet resting going up and going down
+        positiveResting = this._getClosestResting( restingY, distance, 1 );
+        negativeResting = this._getClosestResting( restingY, distance, -1 );
+    } else {
+        restingX        = this.getRestingPosition();
+
+        // How far away from selected slide
+        distance        = Math.abs( this.getSlideDistance( -restingX, this.selectedIndex ) );
+
+        // Get closet resting going up and going down
+        positiveResting = this._getClosestResting( restingX, distance, 1 );
+        negativeResting = this._getClosestResting( restingX, distance, -1 );
+    }
+
+    // Use closer resting for wrap-around
+    index               = positiveResting.distance < negativeResting.distance ?
     positiveResting.index : negativeResting.index;
-  return index;
+
+    return index;
 };
+
+
 
 /**
  * given resting X and distance to selected cell
@@ -286,89 +394,130 @@ proto.dragEndRestingSelect = function() {
  * @param {Integer} increment - +1 or -1, going up or down
  * @returns {Object} - { distance: {Number}, index: {Integer} }
  */
-proto._getClosestResting = function( restingX, distance, increment ) {
-  var index = this.selectedIndex;
-  var minDistance = Infinity;
-  var condition = this.options.contain && !this.options.wrapAround ?
-    // if contain, keep going if distance is equal to minDistance
-    function( d, md ) { return d <= md; } : function( d, md ) { return d < md; };
+
+//------------------------------------------------------------------------------------
+// dragEnd()
+//------------------------------------------------------------------------------------
+proto._getClosestResting = function( restingPt, distance, increment ) {
+
+  var index         = this.selectedIndex,
+      minDistance   = Infinity,
+      condition     = this.options.contain && !this.options.wrapAround ?
+        // If contain, keep going if distance is equal to minDistance
+        function( d, md ) { return d <= md; } : function( d, md ) { return d < md; };
+
   while ( condition( distance, minDistance ) ) {
+
     // measure distance to next cell
-    index += increment;
-    minDistance = distance;
-    distance = this.getSlideDistance( -restingX, index );
+    index           += increment;
+    minDistance     = distance;
+    distance        = this.getSlideDistance( -restingPt, index );
+
     if ( distance === null ) {
       break;
     }
-    distance = Math.abs( distance );
+
+    distance        = Math.abs( distance );
   }
+
   return {
-    distance: minDistance,
-    // selected was previous index
-    index: index - increment
+    distance:   minDistance,
+    index:      index - increment
   };
 };
+
 
 /**
  * measure distance between x and a slide target
  * @param {Number} x
  * @param {Integer} index - slide index
  */
-proto.getSlideDistance = function( x, index ) {
-  var len = this.slides.length;
+
+//------------------------------------------------------------------------------------
+// dragEnd()
+//------------------------------------------------------------------------------------
+proto.getSlideDistance = function( dist, index ) {
+  var len           = this.slides.length;
+
   // wrap around if at least 2 slides
-  var isWrapAround = this.options.wrapAround && len > 1;
-  var slideIndex = isWrapAround ? utils.modulo( index, len ) : index;
-  var slide = this.slides[ slideIndex ];
+  var isWrapAround  = this.options.wrapAround && len > 1;
+  var slideIndex    = isWrapAround ? utils.modulo( index, len ) : index;
+  var slide         = this.slides[ slideIndex ];
   if ( !slide ) {
     return null;
   }
   // add distance for wrap-around slides
-  var wrap = isWrapAround ? this.slideableWidth * Math.floor( index / len ) : 0;
-  return x - ( slide.target + wrap );
+  var wrap          = isWrapAround ? this.slideableWidth * Math.floor( index / len ) : 0;
+
+  return dist - ( slide.target + wrap );
 };
 
+
+//------------------------------------------------------------------------------------
+// dragEndBoostSelect()
+//------------------------------------------------------------------------------------
 proto.dragEndBoostSelect = function() {
-  // do not boost if no previousDragX or dragMoveTime
-  if ( this.previousDragX === undefined || !this.dragMoveTime ||
-    // or if drag was held for 100 ms
-    new Date() - this.dragMoveTime > 100 ) {
-    return 0;
-  }
+    var distance,
+        delta;
 
-  var distance = this.getSlideDistance( -this.dragX, this.selectedIndex );
-  var delta = this.previousDragX - this.dragX;
-  if ( distance > 0 && delta > 0 ) {
-    // boost to next if moving towards the right, and positive velocity
-    return 1;
-  } else if ( distance < 0 && delta < 0 ) {
-    // boost to previous if moving towards the left, and negative velocity
-    return -1;
-  }
-  return 0;
-};
+    if (this.options.verticalCells) {
+        // Do not boost if no previousDragY or dragMoveTime
+        if ( this.previousDragY === undefined || !this.dragMoveTime ||
+            // or if drag was held for 100 ms
+            new Date() - this.dragMoveTime > 100 ) {
+            return 0;
+        }
+
+        distance    = this.getSlideDistance( -this.dragY, this.selectedIndex );
+        delta       = this.previousDragY - this.dragY;
+
+    } else {
+
+        if ( this.previousDragX === undefined || !this.dragMoveTime ||
+            new Date() - this.dragMoveTime > 100 ) {
+            return 0;
+        }
+
+        distance    = this.getSlideDistance( -this.dragX, this.selectedIndex );
+        delta       = this.previousDragX - this.dragX;
+    }
+
+    if ( distance > 0 && delta > 0 ) {
+        // boost to next if moving towards the right, and positive velocity
+        return 1;
+    } else if ( distance < 0 && delta < 0 ) {
+        // boost to previous if moving towards the left, and negative velocity
+        return -1;
+    }
+    
+    return 0;
+  };
 
 // ----- staticClick ----- //
 
 proto.staticClick = function( event, pointer ) {
+
   // get clickedCell, if cell was clicked
-  var clickedCell = this.getParentCell( event.target );
-  var cellElem = clickedCell && clickedCell.element;
-  var cellIndex = clickedCell && this.cells.indexOf( clickedCell );
+  var clickedCell   = this.getParentCell( event.target );
+  var cellElem      = clickedCell && clickedCell.element;
+  var cellIndex     = clickedCell && this.cells.indexOf( clickedCell );
+
   this.dispatchEvent( 'staticClick', event, [ pointer, cellElem, cellIndex ] );
 };
 
 // ----- scroll ----- //
 
 proto.onscroll = function() {
-  var scroll = getScrollPosition();
-  var scrollMoveX = this.pointerDownScroll.x - scroll.x;
-  var scrollMoveY = this.pointerDownScroll.y - scroll.y;
+  var scroll        = getScrollPosition();
+  var scrollMoveX   = this.pointerDownScroll.x - scroll.x;
+  var scrollMoveY   = this.pointerDownScroll.y - scroll.y;
+
   // cancel click/tap if scroll is too much
   if ( Math.abs( scrollMoveX ) > 3 || Math.abs( scrollMoveY ) > 3 ) {
     this._pointerDone();
   }
 };
+
 
 // ----- utils ----- //
 

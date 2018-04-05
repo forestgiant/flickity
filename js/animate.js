@@ -64,11 +64,16 @@ proto.animate = function() {
   this.applyDragForce();
   this.applySelectedAttraction();
 
-  var previousX = this.x;
+  var previousX = this.x,
+      previousY = this.y;
 
   this.integratePhysics();
   this.positionSlider();
-  this.settle( previousX );
+  if (this.options.verticalCells) {
+    this.settle( previousY );
+  } else {
+    this.settle( previousX );
+  }
   // animate next frame
   if ( this.isAnimating ) {
     var _this = this;
@@ -88,34 +93,53 @@ var transformProperty = ( function () {
 })();
 
 proto.positionSlider = function() {
-  var x = this.x;
-  // wrap position around
-  if ( this.options.wrapAround && this.cells.length > 1 ) {
-    x = utils.modulo( x, this.slideableWidth );
-    x = x - this.slideableWidth;
-    this.shiftWrapCells( x );
-  }
+    if(this.options.verticalCells) {
+        var y = this.y;
+        
+        if ( this.options.wrapAround && this.cells.length > 1 ) {
+            y = utils.modulo( y, this.slideableHeight );
+            y = y - this.slideableHeight;
+            this.shiftWrapCells( y );
+        }
 
-  x = x + this.cursorPosition;
-  // reverse if right-to-left and using transform
-  x = this.options.rightToLeft && transformProperty ? -x : x;
-  var value = this.getPositionValue( x );
-  // use 3D tranforms for hardware acceleration on iOS
-  // but use 2D when settled, for better font-rendering
-  if(this.options.verticalCells) {
-    this.slider.style[ transformProperty ] = this.isAnimating ?
-      'translate3d(0,' + value + ',0)' : 'translateY(' + value + ')';
-  } else {
-    this.slider.style[ transformProperty ] = this.isAnimating ?
-      'translate3d(' + value + ',0,0)' : 'translateX(' + value + ')';
-  }
+        y = y + this.cursorPosition;
+        y = this.options.rightToLeft && transformProperty ? -y : y;
+        var value = this.getPositionValue( y );
+
+        this.slider.style[ transformProperty ] = this.isAnimating ?
+            'translate3d(0,' + value + ',0)' : 'translateY(' + value + ')';
+    } else {
+        var x = this.x;
+        
+        if ( this.options.wrapAround && this.cells.length > 1 ) {
+            x = utils.modulo( x, this.slideableWidth );
+            x = x - this.slideableWidth;
+            this.shiftWrapCells( x );
+        }
+
+        x = x + this.cursorPosition;
+        x = this.options.rightToLeft && transformProperty ? -x : x;
+        var value = this.getPositionValue( x );
+
+        this.slider.style[ transformProperty ] = this.isAnimating ?
+          'translate3d(' + value + ',0,0)' : 'translateX(' + value + ')';
+    }
 
   // scroll event
   var firstSlide = this.slides[0];
   if ( firstSlide ) {
-    var positionX = -this.x - firstSlide.target;
-    var progress = positionX / this.slidesWidth;
-    this.dispatchEvent( 'scroll', null, [ progress, positionX ] );
+    var position,
+        progress;
+
+    if (this.options.verticalCellse) {
+        position = -this.y - firstSlide.target;
+        progress = position / this.slidesHeight;
+    } else {
+        position = -this.x - firstSlide.target;
+        progress = position / this.slidesWidth;
+    }
+
+    this.dispatchEvent( 'scroll', null, [ progress, position ] );
   }
 };
 
@@ -123,7 +147,12 @@ proto.positionSliderAtSelected = function() {
   if ( !this.cells.length ) {
     return;
   }
-  this.x = -this.selectedSlide.target;
+  if (this.options.verticalCells) {
+    this.y = -this.selectedSlide.target;
+  } else {
+    this.x = -this.selectedSlide.target;
+  }
+
   this.positionSlider();
 };
 
@@ -153,20 +182,35 @@ proto.settle = function( previousX ) {
 };
 
 proto.shiftWrapCells = function( x ) {
-  // shift before cells
-  var beforeGap = this.cursorPosition + x;
-  this._shiftCells( this.beforeShiftCells, beforeGap, -1 );
-  // shift after cells
-  var afterGap = this.size.innerWidth - ( x + this.slideableWidth + this.cursorPosition );
+    var beforeGap,
+        afterGap;
+
+    if (this.options.verticalCells) {
+        beforeGap = this.cursorPosition +_y; 
+        this._shiftCells( this.beforeShiftCells, beforeGap, -1 );
+        afterGap = this.size.innerHeight - ( y + this.slideableHeight + this.cursorPosition );
+    } else {
+        // shift before cells
+        beforeGap = this.cursorPosition + x;
+        this._shiftCells( this.beforeShiftCells, beforeGap, -1 );
+        // shift after cells
+        afterGap = this.size.innerWidth - ( x + this.slideableWidth + this.cursorPosition );
+  }
+
   this._shiftCells( this.afterShiftCells, afterGap, 1 );
 };
+
 
 proto._shiftCells = function( cells, gap, shift ) {
   for ( var i=0; i < cells.length; i++ ) {
     var cell = cells[i];
     var cellShift = gap > 0 ? shift : 0;
     cell.wrapShift( cellShift );
-    gap -= cell.size.outerWidth;
+    if (this.options.verticalCells) {
+        gap -= cell.size.outerHeight;
+    } else {
+        gap -= cell.size.outerWidth;
+    }
   }
 };
 
@@ -182,7 +226,11 @@ proto._unshiftCells = function( cells ) {
 // -------------------------- physics -------------------------- //
 
 proto.integratePhysics = function() {
-  this.x += this.velocity;
+  if (this.options.verticalCells) {
+    this.y += this.velocity;
+  } else {
+    this.x += this.velocity;
+  }
   this.velocity *= this.getFrictionFactor();
 };
 
@@ -196,15 +244,24 @@ proto.getFrictionFactor = function() {
 
 proto.getRestingPosition = function() {
   // my thanks to Steven Wittens, who simplified this math greatly
-  return this.x + this.velocity / ( 1 - this.getFrictionFactor() );
+  if (this.options.verticalCells) {
+    return this.y + this.velocity / ( 1 - this.getFrictionFactor() );
+  } else {
+    return this.x + this.velocity / ( 1 - this.getFrictionFactor() );
+  }
 };
 
 proto.applyDragForce = function() {
   if ( !this.isPointerDown ) {
     return;
   }
+  var dragVelocity;
   // change the position to drag position by applying force
-  var dragVelocity = this.dragX - this.x;
+  if (this.options.verticalCells) {
+    dragVelocity = this.dragY - this.y;
+  } else {
+    dragVelocity = this.dragX - this.x;
+  }
   var dragForce = dragVelocity - this.velocity;
   this.applyForce( dragForce );
 };
@@ -214,7 +271,13 @@ proto.applySelectedAttraction = function() {
   if ( this.isPointerDown || this.isFreeScrolling || !this.cells.length ) {
     return;
   }
-  var distance = this.selectedSlide.target * -1 - this.x;
+  var distance;
+  if (this.options.verticalCells) {
+    distance = this.selectedSlide.target * -1 - this.y;
+  } else {
+    distance = this.selectedSlide.target * -1 - this.x;
+  }
+
   var force = distance * this.options.selectedAttraction;
   this.applyForce( force );
 };
