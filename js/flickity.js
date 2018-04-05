@@ -297,6 +297,7 @@ proto._positionCells = function( index ) {
   this._containSlides();
   // update slidesWidth
   this.slidesWidth = len ? this.getLastSlide().target - this.slides[0].target : 0;
+  this.slidesHeight = len ? this.getLastSlide().target - this.slides[0].target : 0;
 };
 
 /**
