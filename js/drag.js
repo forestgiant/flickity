@@ -47,8 +47,7 @@ Flickity.createMethods.push('_createDrag');
 // -------------------------- drag prototype -------------------------- //
 
 var proto = Flickity.prototype;
-utils.extend( proto, Unidragger.prototype );
-proto._touchActionValue = 'pan-y';
+utils.extend( proto, Unidragger.prototype ); 
 
 // --------------------------  -------------------------- //
 
